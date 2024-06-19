@@ -19,25 +19,38 @@ const messages = [
   },
 ];
 
-const rooms = []
+const rooms = {};
 
 io.on("connection", (socket) => {
+  console.log(socket);
   socket.user = {
     id: socket.id,
-    name: ""
-  }
+    name: "",
+  };
 
-  socket.on("Set-Nick", nick => {
-    socket.user.name = nick
-  })
+  //   console.log("client terhubung", socket.id);
 
-  socket.on("Join-Room", room => {
-    socket.join(room)
-  })
+  socket.on("Set-Nick", (nick) => {
+    socket.user.name = nick;
+    console.log(`cek nickname ${socket.id}: ${nick}`);
+  });
 
-  socket.on("Leave-Room", room => {
-    socket.leave(room)
-  })
+  socket.on("Join-Room", (room) => {
+    socket.join(room);
+    if (!rooms[room]) {
+      rooms[room] = [];
+    }
+    rooms[room].push(socket.user);
+
+    console.log(`${socket.user.name} berhasil join ke ${room}`);
+    io.to(room).emit("user-joined", socket.user.name, rooms[room]);
+  });
+
+  socket.on("Leave-Room", (room) => {
+    socket.leave(room);
+    rooms[room] = rooms[room].filter((user) => user.id !== socket.user.id);
+    io.to(room).emit("user-left", socket.user.name, rooms[room]);
+  });
 
   socket.on("generate-shuffled-card", () => {
     const cardImages = [
@@ -55,10 +68,18 @@ io.on("connection", (socket) => {
 
     // console.log(shuffledCards);
 
-    io.to("room_1").emit("game-board-created", shuffledCards)
-  })
+    io.to("room_1").emit("game-board-created", shuffledCards);
+  });
 
-  socket.emit("messages", messages);
+  socket.on("disconnect", () => {
+    Object.keys(rooms).forEach((room) => {
+      rooms[room] = rooms[room].filter((user) => user.id !== socket.user.id);
+      io.to(room).emit("user-left", socket.user.name, rooms[room]);
+    });
+  });
+});
+
+socket.emit("messages", messages);
 
   // 2. server menerima pesan nya dari client
   // NOTE: nama event harus sama
@@ -72,20 +93,16 @@ io.on("connection", (socket) => {
 
   // ------------------------------------------
 
+//   socket.on("cards:post", (body) => {
+//     // 2.5 di masukin doang ke array
+//     // messages.push(body);
+//     console.log(body.data, "<<<< ini data dari client");
 
-  socket.on("cards:post", (body) => {
-    // 2.5 di masukin doang ke array
-    // messages.push(body);
-    console.log(body.data, "<<<< ini data dari client");
-
-    // 3. kita kirim messages yang udah diupdate
-    io.emit("cards", cards);
-  });
-});
-
-
-
+//     // 3. kita kirim messages yang udah diupdate
+//     io.emit("cards", cards);
+//   });
+// });
 
 httpServer.listen(3000, () => {
-  console.log("Bisaaaa booss");
+  console.log("Server is running on port 3000");
 });
