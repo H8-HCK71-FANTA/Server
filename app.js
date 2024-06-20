@@ -6,6 +6,7 @@ const cors = require("cors");
 const app = express();
 app.use(cors());
 const httpServer = createServer(app);
+
 const io = new Server(httpServer, {
   cors: {
     origin: "*",
@@ -14,8 +15,8 @@ const io = new Server(httpServer, {
 
 const messages = [
   {
-    sender: "system",
-    text: "Hello World!",
+    sender: "⚔️ Memory Battle [System]",
+    text: "Friendly reminder: keep the chat game-related and enjoyable for all players. Have fun!",
   },
 ];
 
@@ -73,14 +74,14 @@ io.on("connection", (socket) => {
   // ------------------------------------------
 
 
-  socket.on("cards:post", (body) => {
-    // 2.5 di masukin doang ke array
-    // messages.push(body);
-    console.log(body.data, "<<<< ini data dari client");
+  // socket.on("cards:post", (body) => {
+  //   // 2.5 di masukin doang ke array
+  //   // messages.push(body);
+  //   console.log(body.data, "<<<< ini data dari client");
 
-    // 3. kita kirim messages yang udah diupdate
-    io.emit("cards", cards);
-  });
+  //   // 3. kita kirim messages yang udah diupdate
+  //   io.emit("cards", cards);
+  // });
 });
 
 
