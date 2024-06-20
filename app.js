@@ -12,44 +12,57 @@ const io = new Server(httpServer, {
   },
 });
 
-const messages = [
-  {
-    sender: "system",
-    text: "Hello World!",
-  },
-];
-
 const rooms = {};
 
 io.on("connection", (socket) => {
-  console.log(socket);
   socket.user = {
     id: socket.id,
     name: "",
+    room: "",
+    flips: 0,
   };
-
-  //   console.log("client terhubung", socket.id);
 
   socket.on("Set-Nick", (nick) => {
     socket.user.name = nick;
-    console.log(`cek nickname ${socket.id}: ${nick}`);
   });
 
   socket.on("Join-Room", (room) => {
     socket.join(room);
+    socket.user.room = room;
     if (!rooms[room]) {
-      rooms[room] = [];
+      rooms[room] = {
+        messages: [],
+        users: [],
+        turnIndex: 0,
+        cards: [],
+      };
     }
-    rooms[room].push(socket.user);
-
-    console.log(`${socket.user.name} berhasil join ke ${room}`);
-    io.to(room).emit("user-joined", socket.user.name, rooms[room]);
+    rooms[room].users.push(socket.user);
+    io.to(room).emit("user-joined", socket.user.name, rooms[room].users);
+    io.to(room).emit(
+      "update-turn",
+      rooms[room].users[rooms[room].turnIndex].id
+    );
+    console.log(`${socket.user.name} joined ${room}`);
   });
 
   socket.on("Leave-Room", (room) => {
     socket.leave(room);
-    rooms[room] = rooms[room].filter((user) => user.id !== socket.user.id);
-    io.to(room).emit("user-left", socket.user.name, rooms[room]);
+    rooms[room].users = rooms[room].users.filter(
+      (user) => user.id !== socket.user.id
+    );
+    io.to(room).emit("user-left", socket.user.name, rooms[room].users);
+    console.log(`${socket.user.name} left ${room}`);
+  });
+
+  socket.on("messages:post", (message) => {
+    const { sender, text } = message;
+    const room = socket.user.room;
+    const newMessage = { sender, text };
+
+    rooms[room].messages.push(newMessage);
+    io.to(room).emit("message", newMessage);
+    console.log(`Message received in ${room} from ${sender}: ${text}`);
   });
 
   socket.on("generate-shuffled-card", () => {
@@ -66,42 +79,61 @@ io.on("connection", (socket) => {
       .sort(() => Math.random() - 0.5)
       .map((card) => ({ ...card, id: Math.random() }));
 
-    // console.log(shuffledCards);
+    rooms[socket.user.room].cards = shuffledCards;
+    io.to(socket.user.room).emit("game-board-created", shuffledCards);
+  });
 
-    io.to("room_1").emit("game-board-created", shuffledCards);
+  socket.on("flip-card", (cardId) => {
+    const room = socket.user.room;
+    const roomData = rooms[room];
+    const card = roomData.cards.find((c) => c.id === cardId);
+
+    if (!card || card.flipped || card.matched) return;
+
+    const currentPlayerIndex = roomData.turnIndex % roomData.users.length;
+    const currentPlayer = roomData.users[currentPlayerIndex];
+
+    if (currentPlayer.id !== socket.user.id) {
+      return; 
+    }
+
+    card.flipped = true;
+    io.to(room).emit("card-flipped", card);
+
+    const flippedCards = roomData.cards.filter((c) => c.flipped && !c.matched);
+
+    if (flippedCards.length === 2) {
+      if (flippedCards[0].src === flippedCards[1].src) {
+        flippedCards.forEach((c) => (c.matched = true));
+        io.to(room).emit("cards-matched", flippedCards);
+      } else {
+        setTimeout(() => {
+          flippedCards.forEach((c) => (c.flipped = false));
+          io.to(room).emit("cards-unmatched", flippedCards);
+        }, 1000);
+      }
+
+      currentPlayer.flips = 0;
+      roomData.turnIndex++;
+      io.to(room).emit(
+        "update-turn",
+        roomData.users[roomData.turnIndex % roomData.users.length].id
+      );
+    }
   });
 
   socket.on("disconnect", () => {
-    Object.keys(rooms).forEach((room) => {
-      rooms[room] = rooms[room].filter((user) => user.id !== socket.user.id);
-      io.to(room).emit("user-left", socket.user.name, rooms[room]);
-    });
+    if (socket.user.name) {
+      Object.keys(rooms).forEach((room) => {
+        rooms[room].users = rooms[room].users.filter(
+          (user) => user.id !== socket.user.id
+        );
+        io.to(room).emit("user-left", socket.user.name, rooms[room].users);
+      });
+      console.log(`User ${socket.user.name} disconnected`);
+    }
   });
 });
-
-socket.emit("messages", messages);
-
-  // 2. server menerima pesan nya dari client
-  // NOTE: nama event harus sama
-  socket.on("messages:post", (body) => {
-    // 2.5 di masukin doang ke array
-    messages.push(body);
-
-    // 3. kita kirim messages yang udah diupdate
-    io.emit("messages", messages);
-  });
-
-  // ------------------------------------------
-
-//   socket.on("cards:post", (body) => {
-//     // 2.5 di masukin doang ke array
-//     // messages.push(body);
-//     console.log(body.data, "<<<< ini data dari client");
-
-//     // 3. kita kirim messages yang udah diupdate
-//     io.emit("cards", cards);
-//   });
-// });
 
 httpServer.listen(3000, () => {
   console.log("Server is running on port 3000");
