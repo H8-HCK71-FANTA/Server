@@ -12,6 +12,13 @@ const io = new Server(httpServer, {
   },
 });
 
+const messages = [
+  {
+    sender: "⚔️ Memory Battle [System]",
+    text: "Friendly reminder: keep the chat game-related and enjoyable for all players. Have fun!",
+  },
+];
+
 const rooms = {};
 
 io.on("connection", (socket) => {
@@ -21,6 +28,7 @@ io.on("connection", (socket) => {
     room: "",
     flips: 0,
   };
+  console.log(socket.user.id);
 
   socket.on("Set-Nick", (nick) => {
     socket.user.name = nick;
@@ -67,12 +75,18 @@ io.on("connection", (socket) => {
 
   socket.on("generate-shuffled-card", () => {
     const cardImages = [
-      { src: "/img/helmet-1.png", matched: false },
-      { src: "/img/potion-1.png", matched: false },
-      { src: "/img/ring-1.png", matched: false },
-      { src: "/img/scroll-1.png", matched: false },
-      { src: "/img/shield-1.png", matched: false },
-      { src: "/img/sword-1.png", matched: false },
+      // { src: "/img/helmet-1.png", matched: false },
+      // { src: "/img/potion-1.png", matched: false },
+      // { src: "/img/ring-1.png", matched: false },
+      // { src: "/img/scroll-1.png", matched: false },
+      // { src: "/img/shield-1.png", matched: false },
+      // { src: "/img/sword-1.png", matched: false },
+      { src: "/img/cat.jpg", matched: false },
+      { src: "/img/bear.jpeg", matched: false },
+      { src: "/img/gorilla.jpg", matched: false },
+      { src: "/img/owl.jpg", matched: false },
+      { src: "/img/parrot.jpg", matched: false },
+      { src: "/img/wolf.avif", matched: false },
     ];
 
     const shuffledCards = [...cardImages, ...cardImages]
@@ -81,6 +95,7 @@ io.on("connection", (socket) => {
 
     rooms[socket.user.room].cards = shuffledCards;
     io.to(socket.user.room).emit("game-board-created", shuffledCards);
+    console.log(shuffledCards);
   });
 
   socket.on("flip-card", (cardId) => {
@@ -94,7 +109,7 @@ io.on("connection", (socket) => {
     const currentPlayer = roomData.users[currentPlayerIndex];
 
     if (currentPlayer.id !== socket.user.id) {
-      return; 
+      return;
     }
 
     card.flipped = true;
@@ -132,6 +147,17 @@ io.on("connection", (socket) => {
       });
       console.log(`User ${socket.user.name} disconnected`);
     }
+  });
+  socket.emit("messages", messages);
+
+  // 2. server menerima pesan nya dari client
+  // NOTE: nama event harus sama
+  socket.on("messages:post", (body) => {
+    // 2.5 di masukin doang ke array
+    messages.push(body);
+
+    // 3. kita kirim messages yang udah diupdate
+    io.emit("messages", messages);
   });
 });
 
