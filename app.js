@@ -6,6 +6,7 @@ const cors = require("cors");
 const app = express();
 app.use(cors());
 const httpServer = createServer(app);
+
 const io = new Server(httpServer, {
   cors: {
     origin: "*",
@@ -28,7 +29,7 @@ io.on("connection", (socket) => {
     room: "",
     flips: 0,
   };
-  console.log(socket.user.id);
+  // console.log(socket.user.id);
 
   socket.on("Set-Nick", (nick) => {
     socket.user.name = nick;
@@ -67,7 +68,7 @@ io.on("connection", (socket) => {
     const { sender, text } = message;
     const room = socket.user.room;
     const newMessage = { sender, text };
-
+    
     rooms[room].messages.push(newMessage);
     io.to(room).emit("message", newMessage);
     console.log(`Message received in ${room} from ${sender}: ${text}`);
@@ -95,7 +96,7 @@ io.on("connection", (socket) => {
 
     rooms[socket.user.room].cards = shuffledCards;
     io.to(socket.user.room).emit("game-board-created", shuffledCards);
-    console.log(shuffledCards);
+    // console.log(shuffledCards);
   });
 
   socket.on("flip-card", (cardId) => {
@@ -161,6 +162,8 @@ io.on("connection", (socket) => {
   });
 });
 
-httpServer.listen(80, () => {
-  console.log("Server is running on port 80");
+httpServer.listen(3000, () => {
+  console.log("Server is running on port 3000");
+// httpServer.listen(80, () => {
+//   console.log("Server is running on port 80");
 });
