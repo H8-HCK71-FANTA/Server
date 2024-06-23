@@ -68,7 +68,7 @@ io.on("connection", (socket) => {
     const { sender, text } = message;
     const room = socket.user.room;
     const newMessage = { sender, text };
-
+    
     rooms[room].messages.push(newMessage);
     io.to(room).emit("message", newMessage);
     console.log(`Message received in ${room} from ${sender}: ${text}`);
@@ -164,4 +164,6 @@ io.on("connection", (socket) => {
 
 httpServer.listen(3000, () => {
   console.log("Server is running on port 3000");
+// httpServer.listen(80, () => {
+//   console.log("Server is running on port 80");
 });
