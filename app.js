@@ -29,7 +29,7 @@ io.on("connection", (socket) => {
     room: "",
     flips: 0,
   };
-  console.log(socket.user.id);
+  // console.log(socket.user.id);
 
   socket.on("Set-Nick", (nick) => {
     socket.user.name = nick;
@@ -96,7 +96,7 @@ io.on("connection", (socket) => {
 
     rooms[socket.user.room].cards = shuffledCards;
     io.to(socket.user.room).emit("game-board-created", shuffledCards);
-    console.log(shuffledCards);
+    // console.log(shuffledCards);
   });
 
   socket.on("flip-card", (cardId) => {
